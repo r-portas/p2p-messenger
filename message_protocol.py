@@ -42,6 +42,10 @@ class InboundSocket():
         except Exception as e:
             error(e)
 
+    def close_server(self):
+        """Closes the sever"""
+        self.alive = 0
+
     def retrieve_data(self, inboundSocket, inboundAddress):
         """
         Retrieve data from a peer
