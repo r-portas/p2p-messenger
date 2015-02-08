@@ -24,24 +24,35 @@ class InboundSocket():
 
         # Set the socket so it is reusable
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        self.socket.bind(('', self.port))
+        self.success = 0
+        while self.success == 0:
+            try:
+                self.socket.bind(('', self.port))
+                print("[+] Socket running on port {}".format(self.port))
+                self.success = 1
+                break
+            except:
+                self.port += 1
         #Backlog indicates the number of messages to queue up
         self.socket.listen(backlog)
-        self.listen()
 
-    def listen(self):
+    def listen(self, listWidget=None):
         """Listen for inbound communication"""
-        try:
-            while self.alive:
+        while self.alive:
+            try:
                 cSock, cAddr = self.socket.accept()
                 cSock.settimeout(None)
-                Thread(target=self.retrieve_data, args=(cSock, cAddr)).start()
-            self.socket.close()
+                msg = self.retrieve_data(cSock, cAddr)
+                print(msg)
+                if listWidget:
+                    listWidget.addItem(msg)
+                #Thread(target=self.retrieve_data, args=(cSock, cAddr)).start()
+            except Exception as e:
+                error(e)
+            
+        self.socket.close()
 
-        except Exception as e:
-            error(e)
-
+        
     def close_server(self):
         """Closes the sever"""
         self.alive = 0
@@ -59,6 +70,7 @@ class InboundSocket():
         warning("Received from {}:{} : {}".format(inboundAddress[0],
             inboundAddress[1],
             message))
+        return message
 
 
 class OutboundSocket():
@@ -78,6 +90,9 @@ class OutboundSocket():
         if self.targetAddress != "":
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                # Set the socket so it is reusable
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
                 sock.connect((self.targetAddress, self.targetPort))
                 sock.sendall(msg.encode())
                 sock.close()
