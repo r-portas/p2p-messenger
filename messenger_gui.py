@@ -7,12 +7,14 @@ from message_protocol import InboundSocket, OutboundSocket
 from threading import Thread
 from PySide import QtGui
 from mainwindow import Ui_MainWindow as MainWindow
+from getip import get_ip
 
 class Main(QtGui.QMainWindow):
 	def __init__(self):
 		super(Main, self).__init__()
 		self.ui = MainWindow()
 		self.ui.setupUi(self)
+		self.ip = get_ip()
 
 		#Window objects
 		self.listWidget = self.ui.listWidget
@@ -29,7 +31,7 @@ class Main(QtGui.QMainWindow):
 		self.target_ip = "127.0.0.1"
 
 		self.outbound = None
-		self.inbound = InboundSocket()
+		self.inbound = InboundSocket(5, self.listWidget, self.ip)
 		self.thread = Thread(target=self.inbound.listen, args=(self.listWidget,))
 		self.thread.start()
 
@@ -39,26 +41,38 @@ class Main(QtGui.QMainWindow):
 		"""Set the IP to send messages to"""
 		text, ok = QtGui.QInputDialog.getText(self, "Input Dialog", "Enter IP Address")
 		if ok:
-			self.target_ip = text
 			self.outbound = OutboundSocket()
-			self.outbound.setTarget(self.target_ip)
-			print("Setting target ip to {}".format(text))
+			if ':' in text:
+				self.target_ip, port = text.split(":")
+				self.outbound.set_target(self.target_ip, int(port))
+			else:
+				self.target_ip = text
+				self.outbound.set_target(self.target_ip)
+			
+			# Send a message to other client saying that user connected
+			if self.outbound != None:
+				self.outbound.send_message("{} connected from IP {}".format(self.name, self.ip))
 
 	def set_name(self):
 		"""Set the user's name"""
 		text, ok = QtGui.QInputDialog.getText(self, "Input Dialog", "Enter Name")
 		if ok:
+			nameChange = "{} has changed their name to {}".format(self.name, text)
+			self.listWidget.addItem(nameChange)
+			if self.outbound != None:
+				self.outbound.send_message(nameChange)
 			self.name = text
 			print("Setting name to {}".format(text))
 
 	def send(self):
 		"""Send a message"""
-		temp = "{}: {}".format(self.name, self.lineEdit.text())
-		self.lineEdit.clear()
-		self.listWidget.addItem(temp)
+		if self.lineEdit.text() != '':
+			temp = "{}: {}".format(self.name, self.lineEdit.text())
+			self.lineEdit.clear()
+			self.listWidget.addItem(temp)
 
-		if self.outbound != None:
-			self.outbound.send_message(temp)
+			if self.outbound != None:
+				self.outbound.send_message(temp)
 
 	#TODO: Shutdown the inbound socket once application closed
 

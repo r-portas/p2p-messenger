@@ -11,7 +11,7 @@ LISTENING_PORT = 1500
 
 class InboundSocket():
     """The inbound socket listens for inbound messages"""
-    def __init__(self, backlog=5):
+    def __init__(self, backlog=5, listwidget=None, ipaddress=None):
         global LISTENING_PORT
         self.port = LISTENING_PORT
 
@@ -29,6 +29,8 @@ class InboundSocket():
             try:
                 self.socket.bind(('', self.port))
                 print("[+] Socket running on port {}".format(self.port))
+                if listwidget:
+                    listwidget.addItem("Chat server on {}:{}".format(ipaddress, self.port))
                 self.success = 1
                 break
             except:
@@ -81,9 +83,11 @@ class OutboundSocket():
         self.targetPort = LISTENING_PORT
         self.targetAddress = ""
 
-    def set_target(self, hostIp):
+    def set_target(self, hostIp, targetPort=None):
         """Sets the host ip address to send the data to"""
         self.targetAddress = hostIp
+        if targetPort:
+            self.targetPort = targetPort
 
     def send_message(self, msg):
         """Connect and send message to the target"""
